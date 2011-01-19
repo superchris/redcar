@@ -98,13 +98,25 @@ module Redcar
 
     def self.all_bundles
       @all_bundles ||= begin
-        cache = PersistentCache.new("textmate_bundles")
-        cache.cache do
+        bundle_cache.cache do
+          puts "reloading bundles"
           all_bundle_paths.map {|path| Bundle.new(path) }
         end
       end
     end
 
+    def self.bundle_cache
+      PersistentCache.new("textmate_bundles")
+    end
+    
+    def self.reload_bundles
+      bundle_cache.clear
+      @all_bundles = nil
+      @all_snippets = nil
+      @all_settings = nil
+      @all_settings_by_type = nil
+    end
+    
     def self.all_snippets
       @all_snippets ||= begin
         all_bundles.map {|b| b.snippets }.flatten
@@ -118,6 +130,7 @@ module Redcar
     end
 
     def self.settings(type=nil)
+      puts "getting settings for: #{type}"
       @all_settings_by_type ||= {}
       @all_settings_by_type[type] ||= all_settings.select {|s| s.is_a?(type) }
     end
