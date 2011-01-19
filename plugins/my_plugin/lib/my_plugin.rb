@@ -12,6 +12,7 @@ module Redcar
           sub_menu "My Plugin", :priority => 139 do
             item "Hello World!", HelloWorldCommand
             item "Edit My Plugin", EditMyPluginCommand
+            item "Run Rake Task", RunRakeTaskCommand
           end
         end
       end
@@ -20,10 +21,45 @@ module Redcar
     # Example command: showing a dialog box.
     class HelloWorldCommand < Redcar::Command
       def execute
-        Application::Dialog.message_box("Hello World!")
+        Application::Dialog.message_box("Hello Cincinnati Ruby Brigade!")
       end
     end
 
+    class RakeTaskListDialog < Redcar::FilterListDialog
+      
+      def initialize
+        Thread.new { load_tasks }
+        super
+      end
+      
+      def update_list(filter)
+        return ["Loading tasks..."] if @rake_lines.nil?
+        @rake_lines.select { |line| line =~ /#{filter}/ }
+      end
+      
+      def load_tasks
+        out = `cd #{Project::Manager.focussed_project.path}; source .rvmrc; rake -T`
+        lines = out.split("\n")
+        @rake_lines = lines.select {|line| line =~ /^rake/ }
+        controller = @controller
+        Redcar.update_gui do
+          controller.populate_list(@rake_lines)
+        end
+      end
+      
+      def selected(text, index)
+        puts "selected #{text}"
+        close
+        Redcar::Runnables.run_process Project::Manager.focussed_project.path, text, "Running rake task: #{text}"
+      end
+    end
+    
+    class RunRakeTaskCommand < Redcar::Command
+      def execute
+        RakeTaskListDialog.new.open
+      end
+    end
+        
     # Command to open a new window, make the project my_plugin
     # and open this file.
     class EditMyPluginCommand < Redcar::Command
